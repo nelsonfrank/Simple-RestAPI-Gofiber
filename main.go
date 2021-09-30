@@ -12,7 +12,7 @@ type Todo struct {
 	Completed bool   `json:"completed"`
 }
 
-var todos = []Todo{
+var todos = []*Todo{
 	{Id: 1, Name: "Walking the dog", Completed: false},
 	{Id: 2, Name: "Walking the cat", Completed: false},
 }
@@ -20,7 +20,6 @@ var todos = []Todo{
 
 func main() {
 	app := fiber.New()
-
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		var msg string = "Hello, World"
@@ -45,7 +44,7 @@ func GetTodos(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(todos)
 }
 
-func CreateTodo (ctx *fiber.Ctx) error {
+func CreateTodo(ctx *fiber.Ctx) error {
 	type request struct {
 		Name string `json:"name"`
 	}
@@ -59,7 +58,7 @@ func CreateTodo (ctx *fiber.Ctx) error {
 		return err
 	}
 
-	todo := Todo{
+	todo := &Todo{
 		Id:        len(todos)+1,    
 		Name:      body.Name,
 		Completed: false,
@@ -129,15 +128,15 @@ func UpdateTodo(ctx *fiber.Ctx) error {
 	}
 
 	var body request
-	ctx.BodyParser(&body)
 
+	err = ctx.BodyParser(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error" : "Cannot parse body",
 		})
 	}
 
-	var todo Todo
+	var todo *Todo 
 
 	for _, t := range todos {
 		if t.Id == id  {
@@ -146,7 +145,7 @@ func UpdateTodo(ctx *fiber.Ctx) error {
 		}
 	}
 
-	if todo.Id == 0 {
+	if todo == nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "todo not found",
 		})
@@ -160,6 +159,7 @@ func UpdateTodo(ctx *fiber.Ctx) error {
 		todo.Completed = *body.Completed
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(todos)
+	return ctx.Status(fiber.StatusOK).JSON(todo)
+
 
 }
