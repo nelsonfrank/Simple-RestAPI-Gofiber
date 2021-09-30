@@ -1,10 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"go-fiber-todos/database"
 	"go-fiber-todos/todos"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func setupV1(app *fiber.App)  {
@@ -21,9 +25,26 @@ func setupTodosRoutes(grp fiber.Router)  {
 	todosRoutes.Patch("/:id", todos.UpdateTodo)
 }
 
+func initDatabase()  {
+	var err error
+	database.DBConn, err = gorm.Open(sqlite.Open("todos.db"), &gorm.Config{})
+
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	fmt.Println("Database successfully connected")
+
+	database.DBConn.AutoMigrate(&todos.Todo{})
+	fmt.Println("Database Migrated")
+}
+
 func main() {
 	app := fiber.New()
 
+	initDatabase()
+
+	// defer database.DBConn.
 	app.Use(logger.New(logger.Config{
         Format:     "[${ip}]:${port} ${status} - ${method} ${path}\n",
     }))

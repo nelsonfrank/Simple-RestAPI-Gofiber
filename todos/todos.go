@@ -1,28 +1,74 @@
 package todos
 
 import (
+	"go-fiber-todos/database"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 
 type Todo struct {
-	Id        int    `json:"id"`
+	gorm.Model
+	Id        int   `gorm:"primaryKey"`
 	Name      string `json:"name"`
 	Completed bool   `json:"completed"`
 }
 
-var todos = []*Todo{
-	{Id: 1, Name: "Walking the dog", Completed: false},
-	{Id: 2, Name: "Walking the cat", Completed: false},
-}
+/*
+* @ func GetTodos
+* Get all todos
+* @param c *fiber.Ctx -- fiber context
+*/
 
 func GetTodos(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(todos)
+	db := database.DBConn
+	var todoss []Todo
+	db.Find(&todoss)
+	return c.Status(fiber.StatusOK).JSON(todoss)
 }
 
+/*
+* @ func GetTodo
+* Get single todo
+* @param c *fiber.Ctx -- fiber context
+*/
+
+func GetTodo(ctx *fiber.Ctx) error {
+	paramsId := ctx.Params("id")
+	id, err := strconv.Atoi(paramsId)
+	if err != nil {
+		ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "cannot parse id",
+		})
+		return err
+	}
+
+	db := database.DBConn
+
+	var todo Todo
+	db.Find(&todo, id)
+
+	if int(todo.Id) == id{
+	  return ctx.Status(fiber.StatusOK).JSON(todo)
+	}
+
+	return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		"error": "todo not found",
+	})
+}
+
+
+/*
+* @ func CreateTodo
+* Create new todo
+* @param c *fiber.Ctx -- fiber context
+*/
+
 func CreateTodo(ctx *fiber.Ctx) error {
+	db := database.DBConn
 	type request struct {
 		Name string `json:"name"`
 	}
@@ -35,39 +81,27 @@ func CreateTodo(ctx *fiber.Ctx) error {
 		})
 		return err
 	}
-
-	todo := &Todo{
-		Id:        len(todos)+1,    
+	id := uuid.New()
+	todo := Todo{
+		Id:       int(id.ID()),    
 		Name:      body.Name,
 		Completed: false,
 	}
-	todos = append(todos, todo)
+	
+	db.Create(&todo)
 
-	return ctx.Status(fiber.StatusOK).JSON(todos)
+	return ctx.Status(fiber.StatusOK).JSON(todo)
 }
 
-func GetTodo(ctx *fiber.Ctx) error {
-	paramsId := ctx.Params("id")
-	id, err := strconv.Atoi(paramsId)
-	if err != nil {
-		ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "cannot parse id",
-		})
-		return err
-	}
 
-	for _, todo := range todos {
-		if todo.Id == id  {
-			return ctx.Status(fiber.StatusOK).JSON(todo)
-		}
-	}
-
-	return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
-		"error": "todo not found",
-	})
-}
+/*
+* @ func DeleteTodo
+* Delete todo
+* @param c *fiber.Ctx -- fiber context
+*/
 
 func DeleteTodo(ctx *fiber.Ctx) error {
+	db := database.DBConn
 	paramsId := ctx.Params("id")
 	id, err := strconv.Atoi(paramsId)
 	if err != nil {
@@ -76,21 +110,33 @@ func DeleteTodo(ctx *fiber.Ctx) error {
 		})
 	}
 
-	for i, todo := range todos{
-		if todo.Id == id {
-			todos = append(todos[0:i], todos[i+1:]... )
-			
-			return ctx.Status(fiber.StatusNoContent).JSON(fiber.Map{
-				"status": "todo deleted successfully",
-			})
-		}
+	var todo Todo
+	db.First(&todo, id)
+
+	if int(todo.Id) != id {
+		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		     "error": "todo not found",
+	     })
+		
 	}
-	return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
-		"error": "todo not found",
+
+	db.Delete(&todo)
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status": "todo deleted successfully",
 	})
+	
+	
 }
 
+/*
+* @ func UpdateTodo
+* Update todo
+* @param c *fiber.Ctx -- fiber context
+*/
+
 func UpdateTodo(ctx *fiber.Ctx) error {
+	db := database.DBConn
 
 	type request struct {
 		Name      *string `json:"name"`
@@ -114,16 +160,11 @@ func UpdateTodo(ctx *fiber.Ctx) error {
 		})
 	}
 
-	var todo *Todo 
-
-	for _, t := range todos {
-		if t.Id == id  {
-			todo = t
-			break
-		}
-	}
-
-	if todo == nil {
+	var todo Todo
+	// Check if todo exist, if exist assign it value to todo 
+	db.First(&todo, id)
+	
+	if int(todo.Id) != id {
 		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "todo not found",
 		})
@@ -136,6 +177,8 @@ func UpdateTodo(ctx *fiber.Ctx) error {
 	if body.Completed != nil {
 		todo.Completed = *body.Completed
 	}
+
+	db.Save(&todo)
 
 	return ctx.Status(fiber.StatusOK).JSON(todo)
 
