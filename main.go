@@ -25,12 +25,8 @@ func main() {
 		var msg string = "Hello, World"
 		return c.Send([]byte(msg))
 	})
-
-	app.Get("/todos", GetTodos)
-	app.Get("/todos/:id", GetTodo)
-	app.Post("/todos", CreateTodo)
-	app.Delete("/todos/:id", DeleteTodo)
-	app.Patch("/todos/:id", UpdateTodo)
+ 
+	setupV1(app)
 
 
 	// Listen on PORT 3000
@@ -38,6 +34,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func setupV1(app *fiber.App)  {
+	v1 := app.Group("/v1")
+	setupTodosRoutes(v1)
+}
+func setupTodosRoutes(grp fiber.Router)  {
+	todosRoutes := grp.Group("/todos")
+	todosRoutes.Get("/", GetTodos)
+	todosRoutes.Get("/:id", GetTodo)
+	todosRoutes.Post("/", CreateTodo)
+	todosRoutes.Delete("/:id", DeleteTodo)
+	todosRoutes.Patch("/:id", UpdateTodo)
 }
 
 func GetTodos(c *fiber.Ctx) error {
