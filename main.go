@@ -4,6 +4,8 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
 type Todo struct {
@@ -21,6 +23,12 @@ var todos = []*Todo{
 func main() {
 	app := fiber.New()
 
+	app.Use(requestid.New())
+
+	app.Use(logger.New(logger.Config{
+        Format:     "[${ip}]:${port} ${status} - ${method} ${path}\n",
+    }))
+	
 	app.Get("/", func(c *fiber.Ctx) error {
 		var msg string = "Hello, World"
 		return c.Send([]byte(msg))
